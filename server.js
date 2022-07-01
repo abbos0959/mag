@@ -14,8 +14,16 @@ const DB = async (req, res) => {
   }
 };
 DB();
-
 const port = process.env.PORT || 8000;
 app.listen(port,"127.0.0.2", () => {
   console.log(`server ishga tushdi ${port}...`);
 });
+
+process.on("uncaughtException",(err)=>{
+  console.log(err.message,err.name);
+})
+
+
+process.on("unhandledRejection",(err)=>{
+  console.log("errorchaaaaaaaaaaa",err.name,err.message);
+})
