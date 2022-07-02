@@ -14,7 +14,7 @@ router
   router.route("/signup").post(sal.signup)
   router.route("/login").post(sal.login)
   router.route("/forgotpassword").post(sal.ForgetPassword)
-  router.route("/resetpassword").post(sal.login)
+  router.route("/resetpassword/:token").patch(sal.login)
 router
   .route('/:id')
   .get(userController.getUser)
