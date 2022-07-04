@@ -119,6 +119,7 @@ const ForgetPassword = catchErrorAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
   // console.log(token);
 
+  //emailga jo`natish
   const resetUrl = `${req.protocol}://${req.get(
     `host`
   )}/api/v1/users/resetpassword/${token}`;
@@ -128,7 +129,7 @@ const ForgetPassword = catchErrorAsync(async (req, res, next) => {
   try {
     await sendEmail({
       email: user.email,
-      subject: 'sizning  parolibgizni tiklash tokeni',
+      subject: 'sizning  parolingizni tiklash tokeni',
       message
     });
     res.status(200).json({
@@ -138,25 +139,61 @@ const ForgetPassword = catchErrorAsync(async (req, res, next) => {
   } catch (error) {
     (user.resetTokenHash = undefined), (user.resetTokenVaqti = undefined);
     await user.save({ validateBeforeSave: false });
-    return next(new AppError('sizni emailingizga token yuborib bo`lmadi', 500));
+
+    console.log(error.message);
+    // return next(new AppError('sizni emailingizga token yuborib bo`lmadi', 500));
   }
 
   next();
 });
 
-const ResetPassword = (req, res, next) => {
+const ResetPassword = catchErrorAsync(async (req, res, next) => {
+  // 1 Token olamiz
   const token = req.params.token;
-
-  const hashtoken = crypto
+  const hashToken = crypto
     .createHash('sha256')
     .update(token)
     .digest('hex');
-  const use = User.findOne({
-    resetTokenHash: hashtoken,
-    resetTokenVaqti: { $gt: Date.now() }
+  // 2 Tokenni tekshiramiz -> togri noto'g'riligini vaqti o'tib ketmaganligini
+  const user = await User.findOne({
+    resetTokenHash: hashToken,
+    resetTokenVaqt: { $gt: Date.now() }
+  });
+  if (!user) {
+    user.resentPassword = undefined;
+    user.resetTokenVaqt = undefined;
+    return next(new AppError('Tokenda xatolik mavjud. Iltimos', 404));
+  }
+
+  // 3 Yangi parolni saqlaymiz vaqtini saqlaymiz
+
+  if (!req.body.password || !req.body.passwordConfirm) {
+    return next(new AppError('Siz parolni kiritishingiz kk', 404));
+  }
+  if (!(req.body.password === req.body.passwordConfirm)) {
+    return next(
+      new AppError('Parollar teng emas ! Iltimos bir xil parol kiriting', 404)
+    );
+  }
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordChangedDate = Date.now();
+
+  user.resetTokenHash = undefined;
+  user.resetTokenVaqt = undefined;
+
+  await user.save();
+  // 4 JWT yuboramiz
+  const tokenJWT = createToken(user._id);
+
+  res.status(200).json({
+    status: 'success',
+    token: tokenJWT,
+    data: 'right'
   });
   next();
-};
+});
 
 module.exports = {
   signup,
