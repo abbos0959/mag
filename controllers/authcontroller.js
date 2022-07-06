@@ -4,9 +4,18 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const AppError = require('../utils/appError');
 
+
 const sendEmail = require('../utils/mail');
 const { use } = require('../routes/tourRoutes');
 const crypto = require('crypto');
+
+const saveTokeCookie = (token, req, res) => {
+  res.cookie('jwt', token, {
+    maxAge: 24 * 60 * 1000 * 60,
+    httpOnly: true,
+    secure: req.protocol == 'https' ? true : false
+  });
+};
 const signup = catchErrorAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -18,6 +27,7 @@ const signup = catchErrorAsync(async (req, res, next) => {
     role: req.body.role
   });
   const token = jwt.sign({ id: newUser._id }, 'secret', { expiresIn: '1d' });
+  // saveTokeCookie(token, res, req);
   res.status(201).json({
     status: 'success',
     newUser,
@@ -114,6 +124,8 @@ const ForgetPassword = catchErrorAsync(async (req, res, next) => {
   //   .update(token)
   //   .digest('hex');
 
+  //resettoken  yaratish
+
   const token = user.hashTokenMethod();
 
   await user.save({ validateBeforeSave: false });
@@ -161,7 +173,7 @@ const ResetPassword = catchErrorAsync(async (req, res, next) => {
   });
   if (!user) {
     user.resentPassword = undefined;
-    user.resetTokenVaqt = undefined;
+    user.resetTokenVaqt = undefined; //                                  resetTokenVaqti
     return next(new AppError('Tokenda xatolik mavjud. Iltimos', 404));
   }
 
@@ -185,7 +197,7 @@ const ResetPassword = catchErrorAsync(async (req, res, next) => {
 
   await user.save();
   // 4 JWT yuboramiz
-  const tokenJWT = createToken(user._id);
+  const tokenJWT = jwt.sign({ id: user._id }, 'secret', { expiresIn: '1d' });
 
   res.status(200).json({
     status: 'success',
